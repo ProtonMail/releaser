@@ -1,0 +1,24 @@
+{
+  "name": "releaser",
+  "version": "0.0.1",
+  "description": "Generate release notes from git tags and commits.",
+  "main": "bin/main.js",
+  "scripts": {
+    "lint": "eslint $(find src/ -type f -name '*.js')  --quiet",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Mattias Svanström <mmso@protonmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^2.3.0",
+    "child-process-promise": "^2.2.1",
+    "commander": "^2.13.0",
+    "eslint": "^4.15.0",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.8.0",
+    "github": "^13.1.0",
+    "github-api": "^3.0.0",
+    "lodash": "^4.17.4",
+    "markdown-it": "^8.4.0"
+  }
+}
