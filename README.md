@@ -33,7 +33,7 @@ Commits are expected to follow the following convention:
 * `Hotfix - Message`: A commit name that starts with `Hotfix` will get included as `others` with Message as the name of the change.
 
 ### Issue labels
-By default, only issues that contain the labels `[Bug, Feature]` will be included in the release notes. This is customizable through the `labels` parameter.
+By default, only issues that contain the labels `[Bug, Feature]` will be included in the release notes. This is customizable through the `externalLabels` configuration option.
 
 ## Author
 

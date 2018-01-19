@@ -7,7 +7,7 @@
     "releaser": "bin/main.js"
   },
   "scripts": {
-    "lint": "eslint $(find src/ -type f -name '*.js')  --quiet",
+    "lint": "eslint $(find lib/ -type f -name '*.js')  --quiet",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Mattias Svanström <mmso@protonmail.com>",

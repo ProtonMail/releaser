@@ -19,11 +19,11 @@ const log = require('../lib/log');
  * @param {number} rotate number of files to keep
  * @param {string} tag name to start from
  * @param {string} tagFormat the format of what tags to get
- * @param {Array} labels GitHub issues
- * @param {number} others
+ * @param {Array} externalLabels GitHub issues
+ * @param {Array} localLabels local commit labels
  * @returns {Promise<void>}
  */
-async function main({ owner, repo, token, dir, output, rotate, tag, tagFormat, labels, others }) {
+async function main({ owner, repo, token, dir, output, rotate, tag, tagFormat, externalLabels, localLabels }) {
     log.progress(`Loading ${dir}`);
 
     // Get all tags.
@@ -32,10 +32,11 @@ async function main({ owner, repo, token, dir, output, rotate, tag, tagFormat, l
     log.success(`Found tag ${fromTag.name} ${fromTag.date}`);
     log.success(`With ${commits.length} commits`);
 
-    const { filteredCommits, issues } = await git.retrieve({ commits, owner, repo, token, labels, others });
+    const { groupedCommits, issues } = await git.retrieve({ commits, owner, repo, token, externalLabels, localLabels });
 
-    for (let i = 0; i < labels.length; ++i) {
-        log.success(`${filteredCommits[i].length} ${labels[i]} fixed`);
+    for (let i = 0; i < groupedCommits.length; ++i) {
+        const { commits, name } = groupedCommits[i];
+        log.success(`${commits.length} ${name} fixed`);
     }
 
     const { name: version, date } = fromTag;
@@ -44,8 +45,7 @@ async function main({ owner, repo, token, dir, output, rotate, tag, tagFormat, l
         version,
         date,
         issues,
-        labels,
-        filteredCommits
+        groupedCommits
     });
 
     log.progress(`\n---\n${data}\n---`);
@@ -93,7 +93,7 @@ function readConfiguration(pathname) {
 /**
  * Parses a list of arguments.
  * @param {Array} argv
- * @returns {{owner: string, repo: string, token: string, dir: string, output: string, rotate: number, tag: string, tagFormat: string, labels: string[], others: number}}
+ * @returns {{owner: string, repo: string, token: string, dir: string, output: string, rotate: number, tag: string, tagFormat: string, externalLabels: {match: string, name: string}[], localLabels: {match: string, name: string}[]}}
  */
 function parseCmd(argv) {
     commander
@@ -118,8 +118,8 @@ function parseCmd(argv) {
         rotate,
         tag,
         tagFormat = 'v*',
-        labels = ['Feature', 'Bug'],
-        others = 1
+        externalLabels = [{ match: 'Feature', name: 'Features' }, { match: 'Bug', name: 'Bugs' }],
+        localLabels = [{ match: 'Hotfix', name: 'Others' }]
     } = Object.assign({}, commander, configuration);
 
     /**
@@ -135,9 +135,10 @@ function parseCmd(argv) {
             .every(validator);
     };
 
-    if (!validateType([labels], [], _.isArray) ||
-        !validateType([dir, upstream, ...labels], [token, output, tag, tagFormat], _.isString) ||
-        !validateType([], [rotate, others], _.isNumber)
+    if (!validateType([externalLabels], [localLabels], _.isArray) ||
+        !validateType([...externalLabels], [...localLabels], _.isObject) ||
+        !validateType([dir, upstream, ..._.flatMap(externalLabels, _.values)], [token, output, tag, tagFormat, ..._.flatMap(localLabels, _.values)], _.isString) ||
+        !validateType([], [rotate], _.isNumber)
     ) {
         console.error(commander.helpInformation());
         process.exit(1);
@@ -161,7 +162,17 @@ function parseCmd(argv) {
         return { owner: splitted[0], repo: splitted[1] };
     };
 
-    return { ...parseGitHub(upstream), token, dir: inputDirectory, output, rotate, tag, tagFormat, labels, others };
+    return {
+        ...parseGitHub(upstream),
+        token,
+        dir: inputDirectory,
+        output,
+        rotate,
+        tag,
+        tagFormat,
+        externalLabels,
+        localLabels
+    };
 }
 
 main(parseCmd(process.argv))
