@@ -111,7 +111,7 @@ function readConfiguration(pathname) {
 function parseCmd(argv) {
     commander
         .version('0.1.0')
-        .option('--config [value]', 'configuration file in json')
+        .option('--config [value]', 'configuration file in js')
         .option('--dir <value>', 'read commits and tags from this local git directory')
         .option('--upstream <value>', 'GitHub <owner>/<repo>')
         .option('--token [value]', 'GitHub token')
