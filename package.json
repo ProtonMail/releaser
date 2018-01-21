@@ -13,6 +13,7 @@
   "author": "Mattias Svanström <mmso@protonmail.com>",
   "license": "MIT",
   "dependencies": {
+    "ajv": "^6.0.1",
     "chalk": "^2.3.0",
     "child-process-promise": "^2.2.1",
     "commander": "^2.13.0",

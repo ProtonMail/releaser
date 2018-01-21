@@ -4,6 +4,7 @@ const path = require('path');
 const _ = require('lodash');
 const commander = require('commander');
 const fs = require('fs');
+const validator = require('../lib/validator');
 const git = require('../lib/git');
 const render = require('../lib/render');
 const files = require('../lib/files');
@@ -14,16 +15,18 @@ const log = require('../lib/log');
  * @param {string} owner GitHub owner
  * @param {string} repo GitHub repo
  * @param {string} token GitHub token
- * @param {string} dir git directory
- * @param {string} output write directory
- * @param {number} rotate number of files to keep
- * @param {string} tag name to start from
- * @param {string} tagFormat the format of what tags to get
- * @param {Array} externalLabels GitHub issues
- * @param {Array} localLabels local commit labels
+ * @param {string} dir Git directory
+ * @param {string} output Write directory
+ * @param {number} rotate Number of files to keep
+ * @param {RegExp} issueRegex Regex to match external issues
+ * @param {string} tag Name to start from
+ * @param {string} tagFormat The format of what tags to get
+ * @param {Array} externalLabels External commit labels
+ * @param {Array} localLabels Local commit labels
+ * @param {Object} render Render functions.
  * @returns {Promise<void>}
  */
-async function main({ owner, repo, token, dir, output, rotate, tag, tagFormat, externalLabels, localLabels }) {
+async function main({ owner, repo, token, dir, output, rotate, issueRegex, tag, tagFormat, externalLabels, localLabels, render }) {
     log.progress(`Loading ${dir}`);
 
     // Get all tags.
@@ -32,7 +35,15 @@ async function main({ owner, repo, token, dir, output, rotate, tag, tagFormat, e
     log.success(`Found tag ${fromTag.name} ${fromTag.date}`);
     log.success(`With ${commits.length} commits`);
 
-    const { groupedCommits, issues } = await git.retrieve({ commits, owner, repo, token, externalLabels, localLabels });
+    const { groupedCommits, issues } = await git.retrieve({
+        commits,
+        issueRegex,
+        owner,
+        repo,
+        token,
+        externalLabels,
+        localLabels
+    });
 
     for (let i = 0; i < groupedCommits.length; ++i) {
         const { commits, name } = groupedCommits[i];
@@ -41,11 +52,12 @@ async function main({ owner, repo, token, dir, output, rotate, tag, tagFormat, e
 
     const { name: version, date } = fromTag;
 
-    const data = render.renderVersion({
+    const data = render.all({
         version,
         date,
         issues,
-        groupedCommits
+        groupedCommits,
+        render
     });
 
     log.progress(`\n---\n${data}\n---`);
@@ -73,14 +85,15 @@ function readConfiguration(pathname) {
     }
     const resolvedPathname = path.resolve(pathname);
     const fail = () => {
-        console.error(`configuration file ${resolvedPathname} needs to be a valid JSON file`);
+        console.error(`configuration file ${resolvedPathname} needs to be a valid js file`);
         process.exit(1);
     };
-    if (!pathname.endsWith('.json')) {
+    if (!pathname.endsWith('.js')) {
         fail();
     }
     try {
-        const data = JSON.parse(fs.readFileSync(resolvedPathname, 'utf8'));
+        // eslint-disable-next-line import/no-dynamic-require
+        const data = require(resolvedPathname);
         if (!_.isObject(data)) {
             fail();
         }
@@ -93,7 +106,7 @@ function readConfiguration(pathname) {
 /**
  * Parses a list of arguments.
  * @param {Array} argv
- * @returns {{owner: string, repo: string, token: string, dir: string, output: string, rotate: number, tag: string, tagFormat: string, externalLabels: {match: string, name: string}[], localLabels: {match: string, name: string}[]}}
+ * @returns {Object} Parsed args.
  */
 function parseCmd(argv) {
     commander
@@ -103,49 +116,42 @@ function parseCmd(argv) {
         .option('--upstream <value>', 'GitHub <owner>/<repo>')
         .option('--token [value]', 'GitHub token')
         .option('--output [value]', 'write the release note to this directory')
-        .option('--rotate [value]', 'rotate the number of changelogs', parseInt)
+        .option('--rotate [value]', 'rotate the number of changelogs', (val) => parseInt(val, 10))
         .option('--tag [value]', 'get changelog from this tag')
         .option('--tagFormat [value]', 'get tags in this format')
         .parse(argv);
 
-    const configuration = readConfiguration(commander.config);
-
-    const {
-        upstream,
-        token,
-        dir,
-        output,
-        rotate,
-        tag,
-        tagFormat = 'v*',
-        externalLabels = [{ match: 'Feature', name: 'Features' }, { match: 'Bug', name: 'Bugs' }],
-        localLabels = [{ match: 'Hotfix', name: 'Others' }]
-    } = Object.assign({}, commander, configuration);
-
-    /**
-     * Validates that every item in the required and optional arrays are of a certain type.
-     * @param {Array} required
-     * @param {Array} optional
-     * @param {Function} validator
-     * @returns {boolean}
-     */
-    const validateType = (required = [], optional = [], validator) => {
-        return required
-            .concat(optional.filter(Boolean))
-            .every(validator);
+    const defaults = {
+        issueRegex: /(Fix|Close|Resolve) #(\d+)/g,
+        tagFormat: 'v*',
+        labels: {
+            external: [{ match: 'Feature', name: 'Features' }, { match: 'Bug', name: 'Bugs' }],
+            local: [{ match: /Hotfix [-~]? ?/, name: 'Others' }]
+        },
+        render: {
+            all: render.all,
+            commit: render.commit,
+            group: render.group,
+            version: render.version,
+            combine: render.combine
+        }
     };
+    const configuration = _.merge({},
+        defaults,
+        readConfiguration(commander.config),
+        _.pick(commander, ['dir', 'upstream', 'token', 'output', 'rotate', 'tag', 'tagFormat'])
+    );
 
-    if (!validateType([externalLabels], [localLabels], _.isArray) ||
-        !validateType([...externalLabels], [...localLabels], _.isObject) ||
-        !validateType([dir, upstream, ..._.flatMap(externalLabels, _.values)], [token, output, tag, tagFormat, ..._.flatMap(localLabels, _.values)], _.isString) ||
-        !validateType([], [rotate], _.isNumber)
-    ) {
-        console.error(commander.helpInformation());
+    const { valid, error } = validator.validate(configuration);
+    if (!valid) {
+        console.error(error);
         process.exit(1);
     }
 
-    const inputDirectory = path.resolve(dir);
+    const { dir, upstream, labels, ...rest } = configuration;
 
+    // Ensure valid git directory.
+    const inputDirectory = path.resolve(dir);
     // The directory must exist and be valid git repo, otherwise we can't read it.
     if (!fs.existsSync(inputDirectory) || !fs.existsSync(`${inputDirectory}/.git`)) {
         console.error(`${inputDirectory} does not exist, or is not a valid git repo.`);
@@ -164,14 +170,10 @@ function parseCmd(argv) {
 
     return {
         ...parseGitHub(upstream),
-        token,
         dir: inputDirectory,
-        output,
-        rotate,
-        tag,
-        tagFormat,
-        externalLabels,
-        localLabels
+        externalLabels: labels.external,
+        localLabels: labels.local,
+        ...rest
     };
 }
 
