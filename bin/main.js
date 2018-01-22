@@ -24,9 +24,10 @@ const log = require('../lib/log');
  * @param {Array} externalLabels External commit labels
  * @param {Array} localLabels Local commit labels
  * @param {Object} render Render functions.
+ * @param {string} extension The extension for the files.
  * @returns {Promise<void>}
  */
-async function main({ owner, repo, token, dir, output, rotate, issueRegex, tag, tagFormat, externalLabels, localLabels, render }) {
+async function main({ owner, repo, token, dir, output, rotate, issueRegex, tag, tagFormat, externalLabels, localLabels, render, extension }) {
     log.progress(`Loading ${dir}`);
 
     // Get all tags.
@@ -64,7 +65,7 @@ async function main({ owner, repo, token, dir, output, rotate, issueRegex, tag, 
 
     if (output) {
         const unixTs = new Date(date).getTime();
-        const pathname = path.resolve(`${output}/${unixTs}-${version}`);
+        const pathname = path.resolve(`${output}/${unixTs}-${version}${extension}`);
         const directory = path.dirname(pathname);
 
         await files.handleFileOutput({ data, pathname, directory });
@@ -122,6 +123,7 @@ function parseCmd(argv) {
         .parse(argv);
 
     const defaults = {
+        extension: '.md',
         issueRegex: /(Fix|Close|Resolve) #(\d+)/g,
         tagFormat: 'v*',
         labels: {
