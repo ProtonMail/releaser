@@ -7,7 +7,6 @@ const fs = require('fs');
 const validator = require('../lib/validator');
 const git = require('../lib/git');
 const render = require('../lib/render');
-const files = require('../lib/files');
 const log = require('../lib/log');
 
 /**
@@ -16,18 +15,15 @@ const log = require('../lib/log');
  * @param {string} repo GitHub repo
  * @param {string} token GitHub token
  * @param {string} dir Git directory
- * @param {string} output Write directory
- * @param {number} rotate Number of files to keep
  * @param {RegExp} issueRegex Regex to match external issues
  * @param {string} tag Name to start from
  * @param {string} tagFormat The format of what tags to get
  * @param {Array} externalLabels External commit labels
  * @param {Array} localLabels Local commit labels
  * @param {Object} render Render functions.
- * @param {string} extension The extension for the files.
  * @returns {Promise<void>}
  */
-async function main({ owner, repo, token, dir, output, rotate, issueRegex, tag, tagFormat, externalLabels, localLabels, render, extension }) {
+async function main({ owner, repo, token, dir, issueRegex, tag, tagFormat, externalLabels, localLabels, render }) {
     log.progress(`Loading ${dir}`);
 
     // Get all tags.
@@ -62,17 +58,6 @@ async function main({ owner, repo, token, dir, output, rotate, issueRegex, tag, 
     });
 
     log.progress(`\n---\n${data}\n---`);
-
-    if (output) {
-        const unixTs = new Date(date).getTime();
-        const pathname = path.resolve(`${output}/${unixTs}-${version}${extension}`);
-        const directory = path.dirname(pathname);
-
-        await files.handleFileOutput({ data, pathname, directory });
-        if (rotate > 0) {
-            await files.handleFileRotation({ rotate, directory });
-        }
-    }
 }
 
 /**
@@ -116,14 +101,11 @@ function parseCmd(argv) {
         .option('--dir <value>', 'read commits and tags from this local git directory')
         .option('--upstream <value>', 'GitHub <owner>/<repo>')
         .option('--token [value]', 'GitHub token')
-        .option('--output [value]', 'write the release note to this directory')
-        .option('--rotate [value]', 'rotate the number of changelogs', (val) => parseInt(val, 10))
         .option('--tag [value]', 'get changelog from this tag')
         .option('--tagFormat [value]', 'get tags in this format')
         .parse(argv);
 
     const defaults = {
-        extension: '.md',
         issueRegex: /(Fix|Close|Resolve) #(\d+)/g,
         tagFormat: 'v*',
         labels: {

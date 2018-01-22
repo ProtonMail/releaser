@@ -13,8 +13,6 @@ A release note generator that reads and parses git commits and retrieves issue l
 --dir <value>        read commits and tags from this local git directory
 --upstream <value>   GitHub <owner>/<repo>
 --token <value>      GitHub token
---output [value]     write the release note to this directory
---rotate [value]     rotate the number of changelogs
 --tag [value]        get changelog from this tag
 --tagFormat [value]  get tags in this format
 -h, --help           output usage information
@@ -36,7 +34,7 @@ Commits are expected to follow the following convention:
 By default, only issues that contain the labels `[Bug, Feature]` will be included in the release notes. This is customisable through the `externalLabels` parameter in a configuration file.
 
 ## Render
-By default, the changelog is rendered as a markdown file. It is possible to override the rendering functions through the configuration file.
+By default, the changelog is rendered in markdown. It is possible to override the rendering functions through the configuration file.
 
 ## Configuration
 Example `releaser.config.js`:
@@ -45,7 +43,6 @@ Example `releaser.config.js`:
 module.exports = {
     upstream: 'ProtonMail/WebClient',
     dir: '.',
-    output: 'changelog',
     rotate: 5,
     tagFormat: 'v*',
     labels: {
