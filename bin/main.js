@@ -7,7 +7,7 @@ const fs = require('fs');
 const validator = require('../lib/validator');
 const git = require('../lib/git');
 const render = require('../lib/render');
-const log = require('../lib/log');
+const Logger = require('../lib/logger');
 
 /**
  * Run the main program.
@@ -21,16 +21,17 @@ const log = require('../lib/log');
  * @param {Array} externalLabels External commit labels
  * @param {Array} localLabels Local commit labels
  * @param {Object} render Render functions.
+ * @param {Object} logger Logger functions.
  * @returns {Promise<void>}
  */
-async function main({ owner, repo, token, dir, issueRegex, tag, tagFormat, externalLabels, localLabels, render }) {
-    log.progress(`Loading ${dir}`);
+async function main({ owner, repo, token, dir, issueRegex, tag, tagFormat, externalLabels, localLabels, render, logger }) {
+    logger.progress(`Loading ${dir}`);
 
     // Get all tags.
     const { commits, from: fromTag } = await git.read({ dir, tag, tagFormat });
 
-    log.success(`Found tag ${fromTag.name} ${fromTag.date}`);
-    log.success(`With ${commits.length} commits`);
+    logger.success(`Found tag ${fromTag.name} ${fromTag.date}`);
+    logger.success(`With ${commits.length} commits`);
 
     const { groupedCommits, issues } = await git.retrieve({
         commits,
@@ -39,12 +40,13 @@ async function main({ owner, repo, token, dir, issueRegex, tag, tagFormat, exter
         repo,
         token,
         externalLabels,
-        localLabels
+        localLabels,
+        logger
     });
 
     for (let i = 0; i < groupedCommits.length; ++i) {
         const { commits, name } = groupedCommits[i];
-        log.success(`${commits.length} ${name} fixed`);
+        logger.success(`${commits.length} ${name} fixed`);
     }
 
     const { name: version, date } = fromTag;
@@ -57,7 +59,7 @@ async function main({ owner, repo, token, dir, issueRegex, tag, tagFormat, exter
         render
     });
 
-    log.progress(`\n---\n${data}\n---`);
+    process.stdout.write(data);
 }
 
 /**
@@ -101,6 +103,7 @@ function parseCmd(argv) {
         .option('--dir <value>', 'read commits and tags from this local git directory')
         .option('--upstream <value>', 'GitHub <owner>/<repo>')
         .option('--token [value]', 'GitHub token')
+        .option('--verbosity [value]', 'verbosity level', (val) => parseInt(val, 10))
         .option('--tag [value]', 'get changelog from this tag')
         .option('--tagFormat [value]', 'get tags in this format')
         .parse(argv);
@@ -112,6 +115,7 @@ function parseCmd(argv) {
             external: [{ match: 'Feature', name: 'Features' }, { match: 'Bug', name: 'Bugs' }],
             local: [{ match: /Hotfix [-~]? ?/, name: 'Others' }]
         },
+        verbosity: 3,
         render: {
             all: render.all,
             commit: render.commit,
@@ -123,7 +127,7 @@ function parseCmd(argv) {
     const configuration = _.merge({},
         defaults,
         readConfiguration(commander.config),
-        _.pick(commander, ['dir', 'upstream', 'token', 'output', 'rotate', 'tag', 'tagFormat'])
+        _.pick(commander, ['dir', 'upstream', 'token', 'rotate', 'tag', 'tagFormat', 'verbosity'])
     );
 
     const { valid, error } = validator.validate(configuration);
@@ -152,7 +156,11 @@ function parseCmd(argv) {
         return { owner: splitted[0], repo: splitted[1] };
     };
 
+    // eslint-disable-next-line new-cap
+    const logger = Logger({ level: configuration.verbosity });
+
     return {
+        logger,
         ...parseGitHub(upstream),
         dir: inputDirectory,
         externalLabels: labels.external,
@@ -164,10 +172,10 @@ function parseCmd(argv) {
 main(parseCmd(process.argv))
     .catch((e) => {
         if (e.code && e.code === '504') {
-            log.error(`Failed connecting to GitHub: ${e.message}`);
+            console.error(`Failed connecting to GitHub: ${e.message}`);
         } else {
-            log.error(e.message);
+            console.error(e.message);
         }
-        console.log(e);
+        console.error(e);
         process.exit(1);
     });
