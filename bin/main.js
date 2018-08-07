@@ -17,20 +17,20 @@ const Logger = require('../lib/logger');
  * @param {string} dir Git directory
  * @param {RegExp} issueRegex Regex to match external issues
  * @param {string} tag Name to start from
- * @param {string} tagFormat The format of what tags to get
+ * @param {RegExp} tagRegex Regex to tags
  * @param {Array} externalLabels External commit labels
  * @param {Array} localLabels Local commit labels
  * @param {Object} render Render functions.
  * @param {Object} logger Logger functions.
  * @returns {Promise<void>}
  */
-async function main({ owner, repo, token, dir, issueRegex, tag, tagFormat, externalLabels, localLabels, render, logger }) {
+async function main({ owner, repo, token, dir, issueRegex, tag, tagRegex, externalLabels, localLabels, render, logger }) {
     logger.progress(`Loading ${dir}`);
 
     // Get all tags.
-    const { commits, from: fromTag } = await git.read({ dir, tag, tagFormat });
+    const { commits, from: fromTag, to: toTag } = await git.read({ dir, tag, tagRegex });
 
-    logger.success(`Found tag ${fromTag.name} ${fromTag.date}`);
+    logger.success(`Found tags from ${fromTag.name} ${fromTag.date} to ${toTag.name} ${toTag.date}`);
     logger.success(`With ${commits.length} commits`);
 
     const { groupedCommits, issues } = await git.retrieve({
@@ -105,12 +105,11 @@ function parseCmd(argv) {
         .option('--token [value]', 'GitHub token')
         .option('--verbosity [value]', 'verbosity level', (val) => parseInt(val, 10))
         .option('--tag [value]', 'get changelog from this tag')
-        .option('--tagFormat [value]', 'get tags in this format')
         .parse(argv);
 
     const defaults = {
         issueRegex: /(Fix|Close|Resolve) #(\d+)/g,
-        tagFormat: 'v*',
+        tagRegex: /v\d+.\d+.\d+/,
         labels: {
             external: [{ match: 'Feature', name: 'Features' }, { match: 'Bug', name: 'Bugs' }],
             local: [{ match: /Hotfix [-~]? ?/, name: 'Others' }]
@@ -127,7 +126,7 @@ function parseCmd(argv) {
     const configuration = _.merge({},
         defaults,
         readConfiguration(commander.config),
-        _.pick(commander, ['dir', 'upstream', 'token', 'rotate', 'tag', 'tagFormat', 'verbosity'])
+        _.pick(commander, ['dir', 'upstream', 'token', 'rotate', 'tag', 'tagRegex', 'verbosity'])
     );
 
     const { valid, error } = validator.validate(configuration);

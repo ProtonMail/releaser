@@ -14,7 +14,6 @@ A release note generator that reads and parses git commits and retrieves issue l
 --upstream <value>   GitHub <owner>/<repo>
 --token <value>      GitHub token
 --tag [value]        get changelog from this tag
---tagFormat [value]  get tags in this format
 -h, --help           output usage information
 ```
 
@@ -22,7 +21,7 @@ A release note generator that reads and parses git commits and retrieves issue l
 By default, it expects the commits and tags to follow a specific format.
 
 ### Tags
-Tags are expected to follow the semver convention as `v1.0.0`. It is customizable through the `tagFormat` parameter.
+Tags are expected to follow the semver convention as `v1.0.0`. It is customizable through the `tagRegex` configuration option.
 
 ### Commits
 Commits are expected to follow the following convention:
@@ -44,7 +43,7 @@ module.exports = {
     upstream: 'ProtonMail/WebClient',
     dir: '.',
     rotate: 5,
-    tagFormat: 'v*',
+    tagRegex: 'v\d+.\d+.\d+',
     labels: {
         external: [{ match: 'Enchancement', name: 'Features' }, { match: 'Bug', name: 'Bugs' }],
         local: [{ match: /Hotfix [-~]? ?/, name: 'Others' }]
