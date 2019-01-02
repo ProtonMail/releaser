@@ -45,7 +45,7 @@ module.exports = {
     rotate: 5,
     tagRegex: 'v\d+.\d+.\d+',
     labels: {
-        external: [{ match: 'Enchancement', name: 'Features' }, { match: 'Bug', name: 'Bugs' }],
+        external: [{ match: 'Enhancement', name: 'Features' }, { match: 'Bug', name: 'Bugs' }],
         local: [{ match: /Hotfix [-~]? ?/, name: 'Others' }]
     },
     render: {
