@@ -26,7 +26,7 @@ const semver = require('semver');
  * @param {String} type Type of release (semver)
  * @returns {Promise<void>}
  */
-async function main({ owner, repo, token, dir, issueRegex, tag, tagRegex, externalLabels, localLabels, render, logger, type = 'patch' }) {
+async function main({ owner, repo, token, dir, issueRegex, tag, tagRegex, externalLabels, localLabels, render, logger, type }) {
     logger.progress(`Loading ${dir}`);
 
     // Get all tags.
@@ -109,6 +109,7 @@ function parseCmd(argv) {
         .option('--token [value]', 'GitHub token')
         .option('--verbosity [value]', 'verbosity level', (val) => parseInt(val, 10))
         .option('--tag [value]', 'get changelog from this tag')
+        .option('--type [value]', 'Type of new release (semver)')
         .parse(argv);
 
     const defaults = {
@@ -125,12 +126,13 @@ function parseCmd(argv) {
             group: render.group,
             version: render.version,
             combine: render.combine
-        }
+        },
+        type: 'patch'
     };
     const configuration = _.merge({},
         defaults,
         readConfiguration(commander.config),
-        _.pick(commander, ['dir', 'upstream', 'token', 'rotate', 'tag', 'tagRegex', 'verbosity'])
+        _.pick(commander, ['dir', 'upstream', 'token', 'rotate', 'tag', 'tagRegex', 'verbosity', 'type'])
     );
 
     const { valid, error } = validator.validate(configuration);
