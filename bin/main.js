@@ -8,6 +8,13 @@ const validator = require('../lib/validator');
 const git = require('../lib/git');
 const render = require('../lib/render');
 const Logger = require('../lib/logger');
+const semver = require('semver');
+
+const getNextVersion = (fromTagName, type) => {
+    const [, currentTag ] = fromTagName.split('v');
+    const nextVersion = semver.inc(currentTag, type);
+    return `v${nextVersion}`;
+};
 
 /**
  * Run the main program.
@@ -22,9 +29,10 @@ const Logger = require('../lib/logger');
  * @param {Array} localLabels Local commit labels
  * @param {Object} render Render functions.
  * @param {Object} logger Logger functions.
+ * @param {String} type Type of release (semver)
  * @returns {Promise<void>}
  */
-async function main({ owner, repo, token, dir, issueRegex, tag, tagRegex, externalLabels, localLabels, render, logger }) {
+async function main({ owner, repo, token, dir, issueRegex, tag, tagRegex, externalLabels, localLabels, render, logger, type }) {
     logger.progress(`Loading ${dir}`);
 
     // Get all tags.
@@ -49,10 +57,10 @@ async function main({ owner, repo, token, dir, issueRegex, tag, tagRegex, extern
         logger.success(`${commits.length} ${name} fixed`);
     }
 
-    const { name: version, date } = fromTag;
+    const { date, name: fromVersion } = fromTag;
 
     const data = render.all({
-        version,
+        version: type ? getNextVersion(fromVersion, type) : fromVersion,
         date,
         issues,
         groupedCommits,
@@ -105,6 +113,7 @@ function parseCmd(argv) {
         .option('--token [value]', 'GitHub token')
         .option('--verbosity [value]', 'verbosity level', (val) => parseInt(val, 10))
         .option('--tag [value]', 'get changelog from this tag')
+        .option('--type [value]', 'Type of new release (semver)')
         .parse(argv);
 
     const defaults = {
@@ -126,7 +135,7 @@ function parseCmd(argv) {
     const configuration = _.merge({},
         defaults,
         readConfiguration(commander.config),
-        _.pick(commander, ['dir', 'upstream', 'token', 'rotate', 'tag', 'tagRegex', 'verbosity'])
+        _.pick(commander, ['dir', 'upstream', 'token', 'rotate', 'tag', 'tagRegex', 'verbosity', 'type'])
     );
 
     const { valid, error } = validator.validate(configuration);

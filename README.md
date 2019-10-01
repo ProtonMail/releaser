@@ -14,6 +14,7 @@ A release note generator that reads and parses git commits and retrieves issue l
 --upstream <value>   GitHub <owner>/<repo>
 --token <value>      GitHub token
 --tag [value]        get changelog from this tag
+--type [value]       Type of new release (semver)
 -h, --help           output usage information
 ```
 
