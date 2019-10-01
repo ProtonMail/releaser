@@ -23,6 +23,7 @@ const semver = require('semver');
  * @param {Array} localLabels Local commit labels
  * @param {Object} render Render functions.
  * @param {Object} logger Logger functions.
+ * @param {String} type Type of release (semver)
  * @returns {Promise<void>}
  */
 async function main({ owner, repo, token, dir, issueRegex, tag, tagRegex, externalLabels, localLabels, render, logger, type = 'patch' }) {
