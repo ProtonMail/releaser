@@ -8,6 +8,7 @@ const validator = require('../lib/validator');
 const git = require('../lib/git');
 const render = require('../lib/render');
 const Logger = require('../lib/logger');
+const semver = require('semver');
 
 /**
  * Run the main program.
@@ -24,11 +25,13 @@ const Logger = require('../lib/logger');
  * @param {Object} logger Logger functions.
  * @returns {Promise<void>}
  */
-async function main({ owner, repo, token, dir, issueRegex, tag, tagRegex, externalLabels, localLabels, render, logger }) {
+async function main({ owner, repo, token, dir, issueRegex, tag, tagRegex, externalLabels, localLabels, render, logger, type = 'patch' }) {
     logger.progress(`Loading ${dir}`);
 
     // Get all tags.
     const { commits, from: fromTag, to: toTag } = await git.read({ dir, tag, tagRegex });
+    const [, currentTag ] = fromTag.name.split('v');
+    const nextVersion = semver.inc(currentTag, type);
 
     logger.success(`Found tags from ${fromTag.name} ${fromTag.date} to ${toTag.name} ${toTag.date}`);
     logger.success(`With ${commits.length} commits`);
@@ -49,10 +52,10 @@ async function main({ owner, repo, token, dir, issueRegex, tag, tagRegex, extern
         logger.success(`${commits.length} ${name} fixed`);
     }
 
-    const { name: version, date } = fromTag;
+    const { date } = fromTag;
 
     const data = render.all({
-        version,
+        version: `v${nextVersion}`,
         date,
         issues,
         groupedCommits,
