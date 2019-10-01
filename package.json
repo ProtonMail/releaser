@@ -1,6 +1,6 @@
 {
   "name": "releaser",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Generate release notes from git tags and commits.",
   "main": "bin/main.js",
   "bin": {
