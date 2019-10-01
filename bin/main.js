@@ -10,6 +10,12 @@ const render = require('../lib/render');
 const Logger = require('../lib/logger');
 const semver = require('semver');
 
+const getNextVersion = (fromTagName, type) => {
+    const [, currentTag ] = fromTagName.split('v');
+    const nextVersion = semver.inc(currentTag, type);
+    return `v${nextVersion}`;
+};
+
 /**
  * Run the main program.
  * @param {string} owner GitHub owner
@@ -31,8 +37,6 @@ async function main({ owner, repo, token, dir, issueRegex, tag, tagRegex, extern
 
     // Get all tags.
     const { commits, from: fromTag, to: toTag } = await git.read({ dir, tag, tagRegex });
-    const [, currentTag ] = fromTag.name.split('v');
-    const nextVersion = semver.inc(currentTag, type);
 
     logger.success(`Found tags from ${fromTag.name} ${fromTag.date} to ${toTag.name} ${toTag.date}`);
     logger.success(`With ${commits.length} commits`);
@@ -53,10 +57,10 @@ async function main({ owner, repo, token, dir, issueRegex, tag, tagRegex, extern
         logger.success(`${commits.length} ${name} fixed`);
     }
 
-    const { date } = fromTag;
+    const { date, name: fromVersion } = fromTag;
 
     const data = render.all({
-        version: `v${nextVersion}`,
+        version: type ? getNextVersion(fromVersion, type) : fromVersion,
         date,
         issues,
         groupedCommits,
@@ -126,8 +130,7 @@ function parseCmd(argv) {
             group: render.group,
             version: render.version,
             combine: render.combine
-        },
-        type: 'patch'
+        }
     };
     const configuration = _.merge({},
         defaults,
