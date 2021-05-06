@@ -21,7 +21,7 @@
     "eslint-config-airbnb-base": "^13.1.0",
     "eslint-plugin-import": "^2.8.0",
     "execa": "^1.0.0",
-    "lodash": "^4.17.4",
+    "lodash": "^4.17.21",
     "markdown-it": "^8.4.0",
     "semver": "^6.3.0"
   }
